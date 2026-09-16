@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>健康警示圖 - 4x4 拼圖挑戰</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #74b9ff, #dfe6e9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+            font-size: 24px;
+        }
+        p {
+            color: #555;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            width: 360px;
+            height: 480px;
+            gap: 2px;
+            background-color: #2c3e50;
+            padding: 2px;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        .tile {
+            background-image: url('image_ca3d69.jpg');
+            background-size: 360px 480px;
+            width: 100%;
+            height: 100%;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .tile:hover {
+            opacity: 0.9;
+        }
+        .tile.selected {
+            border: 2px solid #e74c3c;
+            box-sizing: border-box;
+            transform: scale(0.95);
+        }
+        #info-panel {
+            margin-top: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+        .btn {
+            margin-top: 15px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #e67e22;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background-color: #d35400;
+        }
+
+        /* 彈出式祝賀視窗樣式 */
+        #win-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            animation: popIn 0.3s ease-in-out;
+            max-width: 300px;
+            width: 80%;
+        }
+        .modal-content h2 {
+            color: #27ae60;
+            margin-top: 0;
+        }
+        .modal-content p {
+            font-size: 18px;
+            color: #333;
+            margin: 15px 0;
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>健康警示圖 - 4x4 進階拼圖</h1>
+    <p>16宮格挑戰！點擊兩塊拼圖交換位置來還原圖片。</p>
+
+    <div id="game-board"></div>
+
+    <div id="info-panel">
+        <div>步數：<span id="step-count">0</span></div>
+    </div>
+
+    <button class="btn" onclick="restartGame()">重新開始 / 洗牌</button>
+
+    <!-- 過關彈出視窗 -->
+    <div id="win-modal">
+        <div class="modal-content">
+            <h2>🎉 挑戰成功！</h2>
+            <p>太神啦！您總共使用了<br><strong id="final-steps" style="color: #e67e22; font-size: 24px;">0</strong> 步完成拼圖！</p>
+            <button class="btn" onclick="restartGame()">再玩一次</button>
+        </div>
+    </div>
+
+    <script>
+        const rows = 4;
+        const cols = 4;
+        const totalTiles = rows * cols;
+        let currentOrder = [];
+        let steps = 0;
+        let selectedIndex = null;
+
+        const imgWidth = 360;
+        const imgHeight = 480;
+        const tileWidth = imgWidth / cols;
+        const tileHeight = imgHeight / rows;
+
+        const board = document.getElementById('game-board');
+        const stepCountSpan = document.getElementById('step-count');
+        const winModal = document.getElementById('win-modal');
+        const finalStepsSpan = document.getElementById('final-steps');
+
+        function restartGame() {
+            steps = 0;
+            stepCountSpan.textContent = steps;
+            selectedIndex = null;
+            winModal.style.display = 'none'; // 關閉彈跳視窗
+
+            currentOrder = Array.from({length: totalTiles}, (_, i) => i);
+            
+            do {
+                currentOrder.sort(() => Math.random() - 0.5);
+            } while (checkWin());
+
+            renderBoard();
+        }
+
+        function renderBoard() {
+            board.innerHTML = '';
+            currentOrder.forEach((tileIndex, currentIndex) => {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                if (currentIndex === selectedIndex) {
+                    tile.classList.add('selected');
+                }
+
+                const x = (tileIndex % cols) * tileWidth;
+                const y = Math.floor(tileIndex / cols) * tileHeight;
+                tile.style.backgroundPosition = `-${x}px -${y}px`;
+
+                tile.addEventListener('click', () => handleTileClick(currentIndex));
+                board.appendChild(tile);
+            });
+        }
+
+        function handleTileClick(index) {
+            if (checkWin()) return;
+
+            if (selectedIndex === null) {
+                selectedIndex = index;
+                renderBoard();
+            } else if (selectedIndex === index) {
+                selectedIndex = null;
+                renderBoard();
+            } else {
+                let temp = currentOrder[selectedIndex];
+                currentOrder[selectedIndex] = currentOrder[index];
+                currentOrder[index] = temp;
+
+                steps++;
+                stepCountSpan.textContent = steps;
+                selectedIndex = null;
+                renderBoard();
+
+                if (checkWin()) {
+                    finalStepsSpan.textContent = steps;
+                    winModal.style.display = 'flex'; // 顯示精美彈跳祝賀視窗
+                }
+            }
+        }
+
+        function checkWin() {
+            return currentOrder.every((val, idx) => val === idx);
+        }
+
+        restartGame();
+    </script>
+
+</body>
+</html>
